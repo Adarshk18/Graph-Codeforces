@@ -25,4 +25,68 @@ In the first example you need to push the blue button once, and then push the re
 
 In the second example, doubling the number is unnecessary, so we need to push the blue button nine times.*/
 
+// import java.util.*;
+// import java.io.*;
 
+// class TwoButtons{
+//     public static void main(String[] args) {
+//         Scanner in = new Scanner(System.in);
+
+//         long a = in.nextLong();
+//         long b = in.nextLong();
+
+//         long ans = 0;
+//         while(b>a){
+//             if(b%2!=0){
+//                 b +=1;
+//             }else{
+//                 b /= 2;
+//             }
+//             ans ++;
+//         }
+//         ans += (a-b);
+//         System.out.println(ans);
+//     }
+// }
+
+// using graph
+
+import java.util.*;
+import java.io.*;
+ 
+public final class TwoButtons{
+    public static void main(String[] args){
+        Scanner in = new Scanner(System.in);
+        
+        int n = in.nextInt();
+        int m = in.nextInt();
+        
+        System.out.println(minSteps(n,m));
+    }
+    
+    public static int minSteps(int n, int m){
+        Queue<int[]> q = new LinkedList<>();
+        Set<Integer> vis = new HashSet<>();
+        
+        q.offer(new int[]{n,0});
+        vis.add(n);
+        
+        while(!q.isEmpty()){
+            int[] curr = q.poll();
+            int number = curr[0];
+            int steps = curr[1];
+            
+            if(number == m) return steps;
+            if(number*2 <= 2*m && !vis.contains(number*2)){
+                q.offer(new int[]{number*2, steps+1});
+                vis.add(number*2);
+            }
+            
+            if(number-1 > 0 && !vis.contains(number-1)){
+                q.offer(new int[]{number-1, steps+1});
+                vis.add(number-1);
+            }
+        }
+        return -1;
+    }
+}
