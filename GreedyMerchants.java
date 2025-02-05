@@ -1,110 +1,150 @@
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.*;
 
 public class GreedyMerchants {
-    static int n, m;
+    static int n, m, k, timer;
     static List<Integer>[] graph;
-    static List<int[]> edges;
-    static boolean[] visited;
     static int[] tin, low;
-    static int timer = 0;
-    static Set<String> bridges = new HashSet<>();
+    static boolean[] isBridge;
+    static List<int[]> bridges;
+    static int[] component;
+    static List<Integer>[] tree;
+    static int compCount;
 
-    @SuppressWarnings("unchecked")
-    public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        n = sc.nextInt();
-        m = sc.nextInt();
+    public static void main(String[] args) throws IOException {
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+        StringTokenizer str = new StringTokenizer(br.readLine());
+
+        n = Integer.parseInt(str.nextToken());
+        m = Integer.parseInt(str.nextToken());
 
         graph = new ArrayList[n + 1];
-        edges = new ArrayList<>();
-        for (int i = 1; i <= n; i++) {
+        for (int i = 1; i <= n; i++)
             graph[i] = new ArrayList<>();
-        }
 
-        for (int i = 0; i < m; i++) {
-            int a = sc.nextInt(), b = sc.nextInt();
-            graph[a].add(b);
-            graph[b].add(a);
-            edges.add(new int[]{a, b});
-        }
-
-        // Step 1: Find Bridges using Tarjan's Algorithm
-        findBridges();
-
-        int k = sc.nextInt();
-        for (int i = 0; i < k; i++) {
-            int s = sc.nextInt(), l = sc.nextInt();
-            System.out.println(countImportantRoads(s, l));
-        }
-
-        sc.close();
-    }
-
-    // Tarjan's Algorithm to find Bridges
-    static void findBridges() {
-        visited = new boolean[n + 1];
         tin = new int[n + 1];
         low = new int[n + 1];
+        Arrays.fill(tin, -1);
+        Arrays.fill(low, -1);
+
+        bridges = new ArrayList<>();
+        isBridge = new boolean[m];
+        Map<String, Integer> edgeIndex = new HashMap<>();
+
+        // Read roads
+        for (int i = 0; i < m; i++) {
+            str = new StringTokenizer(br.readLine());
+            int u = Integer.parseInt(str.nextToken()), v = Integer.parseInt(str.nextToken());
+            graph[u].add(v);
+            graph[v].add(u);
+            edgeIndex.put(u + "," + v, i);
+            edgeIndex.put(v + "," + u, i);
+        }
+
+        // Step 1: Find Bridges (Tarjan's Algorithm)
+        timer = 0;
+        for (int i = 1; i <= n; i++) {
+            if (tin[i] == -1)
+                findBridges(i, -1);
+        }
+
+        // Step 2: Build Component Graph
+        component = new int[n + 1];
+        Arrays.fill(component, -1);
+        compCount = 0;
 
         for (int i = 1; i <= n; i++) {
-            if (!visited[i]) {
-                dfs(i, -1);
+            if (component[i] == -1) {
+                compCount++;
+                dfsComponent(i, compCount);
+            }
+        }
+
+        tree = new ArrayList[compCount + 1];
+        for (int i = 1; i <= compCount; i++)
+            tree[i] = new ArrayList<>();
+
+        for (int[] bridge : bridges) {
+            int c1 = component[bridge[0]];
+            int c2 = component[bridge[1]];
+            tree[c1].add(c2);
+            tree[c2].add(c1);
+        }
+
+        // Step 3: Read Merchants and Find Important Roads
+        str = new StringTokenizer(br.readLine()); // Read a new line for k
+        k = Integer.parseInt(str.nextToken());
+
+        for (int i = 0; i < k; i++) {
+            str = new StringTokenizer(br.readLine()); 
+            int s = Integer.parseInt(str.nextToken()), l = Integer.parseInt(str.nextToken());
+            int c1 = component[s], c2 = component[l];
+
+            if (c1 == c2) {
+                System.out.println(0);
+            } else {
+                System.out.println(countBridges(c1, c2));
             }
         }
     }
 
-    static void dfs(int node, int parent) {
-        visited[node] = true;
+    // Tarjan's Algorithm to find bridges
+    static void findBridges(int node, int parent) {
         tin[node] = low[node] = timer++;
-        
         for (int neighbor : graph[node]) {
-            if (neighbor == parent) continue;
-            if (visited[neighbor]) {
-                low[node] = Math.min(low[node], tin[neighbor]);
-            } else {
-                dfs(neighbor, node);
+            if (neighbor == parent)
+                continue;
+            if (tin[neighbor] == -1) {
+                findBridges(neighbor, node);
                 low[node] = Math.min(low[node], low[neighbor]);
                 if (low[neighbor] > tin[node]) {
-                    // Edge (node, neighbor) is a bridge
-                    bridges.add(node + "," + neighbor);
-                    bridges.add(neighbor + "," + node);
+                    bridges.add(new int[] { node, neighbor });
                 }
+            } else {
+                low[node] = Math.min(low[node], tin[neighbor]);
             }
         }
     }
 
-    // Count important roads (bridges) on the path from warehouse to shop
-    static int countImportantRoads(int s, int l) {
-        // BFS/DFS to find the path and count bridge edges
+    // DFS to create component graph
+    static void dfsComponent(int node, int comp) {
+        component[node] = comp;
+        for (int neighbor : graph[node]) {
+            if (component[neighbor] == -1 && !isBridgeEdge(node, neighbor)) {
+                dfsComponent(neighbor, comp);
+            }
+        }
+    }
+
+    static boolean isBridgeEdge(int u, int v) {
+        for (int[] bridge : bridges) {
+            if ((bridge[0] == u && bridge[1] == v) || (bridge[0] == v && bridge[1] == u))
+                return true;
+        }
+        return false;
+    }
+
+    // BFS to count bridges in path
+    static int countBridges(int c1, int c2) {
         Queue<Integer> queue = new LinkedList<>();
-        boolean[] visited = new boolean[n + 1];
-        Map<Integer, Integer> parent = new HashMap<>();
-        queue.add(s);
-        visited[s] = true;
+        Map<Integer, Integer> dist = new HashMap<>();
+        queue.add(c1);
+        dist.put(c1, 0);
 
         while (!queue.isEmpty()) {
-            int curr = queue.poll();
-            if (curr == l) break;
-            for (int neighbor : graph[curr]) {
-                if (!visited[neighbor]) {
-                    visited[neighbor] = true;
-                    parent.put(neighbor, curr);
+            int node = queue.poll();
+            if (node == c2)
+                return dist.get(node);
+
+            for (int neighbor : tree[node]) {
+                if (!dist.containsKey(neighbor)) {
+                    dist.put(neighbor, dist.get(node) + 1);
                     queue.add(neighbor);
                 }
             }
         }
-
-        // Trace the path from l back to s and count bridges
-        int count = 0;
-        int curr = l;
-        while (parent.containsKey(curr)) {
-            int prev = parent.get(curr);
-            if (bridges.contains(curr + "," + prev)) {
-                count++;
-            }
-            curr = prev;
-        }
-
-        return count;
+        return 0;
     }
 }
