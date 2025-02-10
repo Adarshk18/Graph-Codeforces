@@ -1,1 +1,1 @@
-p.flush();
+sb.deleteCharAt(i);
