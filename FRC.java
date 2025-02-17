@@ -32,6 +32,12 @@ public class FRC {
         int n = Integer.parseInt(st.nextToken());
         int m = Integer.parseInt(st.nextToken());
 
+        if (n == 1) {
+            pw.println("YES");
+            pw.flush();
+            return;
+        }
+
         graph = new ArrayList[n + 1];
         reverseGraph = new ArrayList[n + 1];
         for (int i = 1; i <= n; i++) {
